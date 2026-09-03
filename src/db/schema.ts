@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   AnyPgColumn,
   check,
@@ -85,11 +85,13 @@ export const expenseCategoryEnum = pgEnum("expense_category", [
   "other",
 ]);
 
-/** Application users. Authentication credentials belong to the auth provider. */
+/** Application users; password hashes are optional for local/test authentication. */
 export const users = pgTable("users", {
   id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
+  /** Nullable to support users managed by an external auth provider. */
+  passwordHash: text("password_hash"),
   role: userRoleEnum("role").default("boss").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -98,6 +100,23 @@ export const users = pgTable("users", {
     .defaultNow()
     .notNull(),
 });
+
+/** Opaque browser sessions; only a one-way token digest is persisted. */
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [index("sessions_user_id_idx").on(table.userId)],
+);
 
 /** Profile and employment information for users with the worker role. */
 export const workers = pgTable(
@@ -459,6 +478,7 @@ export const feedTransactions = pgTable(
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+export type Session = typeof sessions.$inferSelect;
 export type Worker = typeof workers.$inferSelect;
 export type NewWorker = typeof workers.$inferInsert;
 export type Farm = typeof farm.$inferSelect;
@@ -466,4 +486,183 @@ export type Animal = typeof animals.$inferSelect;
 export type NewAnimal = typeof animals.$inferInsert;
 export type MortalityRecord = typeof mortalityRecords.$inferSelect;
 export type AnimalSale = typeof animalSales.$inferSelect;
+export const usersRelations = relations(users, ({ one, many }) => ({
+  workerProfile: one(workers),
+  createdFarms: many(farm, { relationName: "farmCreatedBy" }),
+  createdAnimals: many(animals, { relationName: "animalCreatedBy" }),
+  mortalityRecords: many(mortalityRecords, {
+    relationName: "mortalityRecordedBy",
+  }),
+  animalSales: many(animalSales, { relationName: "animalSaleRecordedBy" }),
+  healthRecords: many(animalHealthRecords, {
+    relationName: "healthRecordRecordedBy",
+  }),
+  animalMovements: many(animalMovements, {
+    relationName: "animalMovementRecordedBy",
+  }),
+  breedingRecords: many(breedingRecords, {
+    relationName: "breedingRecordedBy",
+  }),
+  productionRecords: many(productionRecords, {
+    relationName: "productionRecordedBy",
+  }),
+  expenses: many(expenses, { relationName: "expenseRecordedBy" }),
+  feedTransactions: many(feedTransactions, {
+    relationName: "feedTransactionRecordedBy",
+  }),
+}));
+
+export const workersRelations = relations(workers, ({ one }) => ({
+  user: one(users, {
+    fields: [workers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const farmRelations = relations(farm, ({ one }) => ({
+  createdByUser: one(users, {
+    fields: [farm.createdBy],
+    references: [users.id],
+    relationName: "farmCreatedBy",
+  }),
+}));
+
+export const animalsRelations = relations(animals, ({ one }) => ({
+  createdByUser: one(users, {
+    fields: [animals.createdBy],
+    references: [users.id],
+    relationName: "animalCreatedBy",
+  }),
+}));
+
+export const mortalityRecordsRelations = relations(
+  mortalityRecords,
+  ({ one }) => ({
+    recordedByUser: one(users, {
+      fields: [mortalityRecords.recordedBy],
+      references: [users.id],
+      relationName: "mortalityRecordedBy",
+    }),
+    animal: one(animals, {
+      fields: [mortalityRecords.animalId],
+      references: [animals.id],
+    }),
+    location: one(locations, {
+      fields: [mortalityRecords.locationId],
+      references: [locations.id],
+    }),
+  }),
+);
+
+export const animalSalesRelations = relations(animalSales, ({ one }) => ({
+  recordedByUser: one(users, {
+    fields: [animalSales.recordedBy],
+    references: [users.id],
+    relationName: "animalSaleRecordedBy",
+  }),
+  animal: one(animals, {
+    fields: [animalSales.animalId],
+    references: [animals.id],
+  }),
+}));
+
+export const animalHealthRecordsRelations = relations(
+  animalHealthRecords,
+  ({ one }) => ({
+    recordedByUser: one(users, {
+      fields: [animalHealthRecords.recordedBy],
+      references: [users.id],
+      relationName: "healthRecordRecordedBy",
+    }),
+    animal: one(animals, {
+      fields: [animalHealthRecords.animalId],
+      references: [animals.id],
+    }),
+  }),
+);
+
+export const animalMovementsRelations = relations(
+  animalMovements,
+  ({ one }) => ({
+    recordedByUser: one(users, {
+      fields: [animalMovements.recordedBy],
+      references: [users.id],
+      relationName: "animalMovementRecordedBy",
+    }),
+    animal: one(animals, {
+      fields: [animalMovements.animalId],
+      references: [animals.id],
+    }),
+    fromLocation: one(locations, {
+      fields: [animalMovements.fromLocationId],
+      references: [locations.id],
+      relationName: "animalMovementFromLocation",
+    }),
+    toLocation: one(locations, {
+      fields: [animalMovements.toLocationId],
+      references: [locations.id],
+      relationName: "animalMovementToLocation",
+    }),
+  }),
+);
+
+export const breedingRecordsRelations = relations(
+  breedingRecords,
+  ({ one }) => ({
+    recordedByUser: one(users, {
+      fields: [breedingRecords.recordedBy],
+      references: [users.id],
+      relationName: "breedingRecordedBy",
+    }),
+    femaleAnimal: one(animals, {
+      fields: [breedingRecords.femaleAnimalId],
+      references: [animals.id],
+      relationName: "breedingFemaleAnimal",
+    }),
+    maleAnimal: one(animals, {
+      fields: [breedingRecords.maleAnimalId],
+      references: [animals.id],
+      relationName: "breedingMaleAnimal",
+    }),
+  }),
+);
+
+export const productionRecordsRelations = relations(
+  productionRecords,
+  ({ one }) => ({
+    recordedByUser: one(users, {
+      fields: [productionRecords.recordedBy],
+      references: [users.id],
+      relationName: "productionRecordedBy",
+    }),
+    animal: one(animals, {
+      fields: [productionRecords.animalId],
+      references: [animals.id],
+    }),
+  }),
+);
+
+export const expensesRelations = relations(expenses, ({ one }) => ({
+  recordedByUser: one(users, {
+    fields: [expenses.recordedBy],
+    references: [users.id],
+    relationName: "expenseRecordedBy",
+  }),
+}));
+
+export const feedTransactionsRelations = relations(
+  feedTransactions,
+  ({ one }) => ({
+    recordedByUser: one(users, {
+      fields: [feedTransactions.recordedBy],
+      references: [users.id],
+      relationName: "feedTransactionRecordedBy",
+    }),
+    feedItem: one(feedItems, {
+      fields: [feedTransactions.feedItemId],
+      references: [feedItems.id],
+    }),
+  }),
+);
+
 export type Expense = typeof expenses.$inferSelect;
