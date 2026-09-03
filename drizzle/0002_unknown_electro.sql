@@ -25,8 +25,8 @@ ALTER TABLE "locations" DROP CONSTRAINT "locations_farm_id_farms_id_fk";
 DROP INDEX "animals_farm_id_idx";--> statement-breakpoint
 DROP INDEX "feed_items_farm_id_idx";--> statement-breakpoint
 DROP INDEX "locations_farm_id_idx";--> statement-breakpoint
-ALTER TABLE "farms" ALTER COLUMN "id" SET DEFAULT 1;--> statement-breakpoint
 ALTER TABLE "farms" ALTER COLUMN "id" DROP IDENTITY;--> statement-breakpoint
+ALTER TABLE "farms" ALTER COLUMN "id" SET DEFAULT 1;--> statement-breakpoint
 ALTER TABLE "farms" ALTER COLUMN "name" SET DEFAULT 'NDMU School Farm';--> statement-breakpoint
 ALTER TABLE "farms" ALTER COLUMN "code" SET DEFAULT 'NDMU-SCHOOL-FARM';--> statement-breakpoint
 ALTER TABLE "farms" ADD COLUMN "institution" text DEFAULT 'NDMU' NOT NULL;--> statement-breakpoint
