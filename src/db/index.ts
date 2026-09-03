@@ -1,6 +1,13 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { neon } from "@neondatabase/serverless";
+import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
+import { drizzle as drizzlePostgres } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+import { getDatabaseTarget, getDatabaseUrl } from "./config";
 
-const sqlite = new Database(process.env.DATABASE_URL ?? "local.db");
+const databaseTarget = getDatabaseTarget();
+const databaseUrl = getDatabaseUrl();
 
-export const db = drizzle(sqlite);
+export const db =
+  databaseTarget === "neon"
+    ? drizzleNeon(neon(databaseUrl))
+    : drizzlePostgres(new Pool({ connectionString: databaseUrl }));
