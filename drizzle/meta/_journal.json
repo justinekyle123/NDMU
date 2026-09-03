@@ -29,6 +29,20 @@
       "when": 1788405464164,
       "tag": "0003_cute_the_watchers",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788406771880,
+      "tag": "0004_pale_warstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788409125455,
+      "tag": "0006_youthful_the_stranger",
+      "breakpoints": true
     }
   ]
 }

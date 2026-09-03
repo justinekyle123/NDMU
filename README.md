@@ -44,6 +44,7 @@ Docker Desktop or Docker Engine is required.
 ```bash
 npm run db:local:up
 npm run db:migrate
+npm run db:seed
 npm run dev
 ```
 
@@ -64,6 +65,7 @@ and run the migration:
 
 ```bash
 npm run db:migrate
+npm run db:seed
 npm run dev
 ```
 
@@ -82,7 +84,8 @@ separate entities.
 
 The schema in `src/db/schema.ts` includes:
 
-- `users`: application users with `admin`, `boss`, or `worker` roles.
+- `users`: application users with `admin`, `boss`, or `worker` roles; optional `password_hash` values support local/test password authentication.
+- `sessions`: short-lived, database-backed sessions that store only a digest of the browser token.
 - `workers`: employment/profile details for users with the `worker` role.
 - `farms`: the singleton NDMU School Farm profile and settings.
 - `locations`: barns, pastures, coops, stables, and pens within the farm.
@@ -105,6 +108,8 @@ The schema in `src/db/schema.ts` includes:
   explicitly granted by the application (for example, recording health,
   movement, or production events).
 
+The login screen is available at `/login`, and successful authentication leads to the protected `/dashboard` route. Apply migrations and seed the test users before signing in.
+
 The database stores roles and audit fields, but authorization must be enforced
 in authenticated server actions, route handlers, and service functions. Do not
 rely on UI visibility alone. Only an authenticated `admin` should be allowed to
@@ -126,6 +131,7 @@ npm run build
 npm run lint
 npm run db:generate
 npm run db:migrate
+npm run db:seed
 npm run db:local:up
 npm run db:local:down
 npm run db:local:logs
